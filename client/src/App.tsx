@@ -62,7 +62,7 @@ function App() {
                 onChange={(event) => setCustomIdInput(event.target.value)}
                 placeholder="Add custom ID"
               />
-              <button type="button" onClick={onAdd} disabled={addMutation.isPending}>
+              <button type="button" onClick={onAdd}>
                 Add
               </button>
             </div>
@@ -80,11 +80,7 @@ function App() {
             renderRow={(itemId) => (
               <div className="item-row">
                 <span className="id-tag">#{itemId}</span>
-                <button
-                  type="button"
-                  onClick={() => selectMutation.mutate(itemId)}
-                  disabled={selectMutation.isPending}
-                >
+                <button type="button" onClick={() => selectMutation.mutate(itemId)}>
                   Select
                 </button>
               </div>

@@ -24,7 +24,7 @@ export function VirtualList({
 
   return (
     <Virtuoso
-      style={{ height: 560 }}
+      style={{ height: 560, overflowX: "hidden" }}
       data={items}
       endReached={() => {
         if (hasMore && !loading) {

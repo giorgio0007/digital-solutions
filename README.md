@@ -99,13 +99,15 @@ Flush behavior:
 Reads:
 - `GET /api/items/left`
 - `GET /api/items/right`
-- `GET /api/state/meta` -> `{ stateVersion, pendingAdd, pendingMutation }`
+- `GET /api/state/meta` -> `{ stateVersion, pendingAdd, pendingMutation }` (manual refresh / post-mutation sync; client does **not** poll this every second)
 
 Writes:
 - `POST /api/actions/select` `{ id }`
 - `POST /api/actions/deselect` `{ id }`
 - `POST /api/actions/add` `{ id }`
 - `POST /api/actions/reorder` `{ itemId, targetId, position }`
+
+Each write responds with enqueue metadata **plus** the same `{ stateVersion, pendingAdd, pendingMutation }` snapshot so the UI can update indicators without hammering `/state/meta`.
 
 Reorder is operation-based (no full array payload).
 
@@ -119,7 +121,10 @@ Uses:
 UX behavior:
 - debounced search in both panels
 - stale requests canceled through query `AbortSignal`
-- queue indicators (`pendingAdd`, `pendingMutation`, `stateVersion`)
+- optimistic list updates for select/deselect/add so the UI does not flicker before the 1s / 10s server flush
+- periodic resync roughly aligned with flush windows (invalidate lists + meta shortly after enqueue)
+- queue indicators fed from mutation responses (no unconditional 1 Hz polling)
+- drag/drop is vertical-only (`restrictToVerticalAxis`); horizontal dragging is suppressed
 - drag/drop reorder works while filtered because backend reorders against global `selectedOrder` by `targetId` lookup
 
 ## Tradeoffs

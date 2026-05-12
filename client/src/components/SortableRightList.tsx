@@ -6,6 +6,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   SortableContext,
   useSortable,
@@ -24,7 +25,9 @@ function SortableRow({
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: itemId,
   });
-  const style = { transform: CSS.Transform.toString(transform), transition };
+  const style = transform
+    ? { transform: CSS.Transform.toString({ ...transform, x: 0 }), transition }
+    : { transition };
   return (
     <div ref={setNodeRef} style={style} className="item-row">
       <span className="id-tag">#{itemId}</span>
@@ -74,7 +77,12 @@ export function SortableRightList({
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      modifiers={[restrictToVerticalAxis]}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         <VirtualList
           items={items}

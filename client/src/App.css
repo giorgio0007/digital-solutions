@@ -28,6 +28,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   padding: 12px;
+  overflow-x: hidden;
 }
 
 .panel-controls {
@@ -66,6 +67,7 @@ button {
   border-radius: 8px;
   padding: 8px;
   background: #fafafa;
+  max-width: 100%;
 }
 
 .id-tag {

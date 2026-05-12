@@ -23,6 +23,8 @@ export function useStateMetaQuery() {
   return useQuery({
     queryKey: ["state-meta"],
     queryFn: ({ signal }) => getStateMeta(signal),
-    refetchInterval: 1000,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }

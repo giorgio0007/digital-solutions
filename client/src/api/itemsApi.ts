@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from "./http";
-import type { ActionQueueAck, CursorPage, ReorderPayload, StateMeta } from "../types";
+import type { ActionAckResponse, CursorPage, ReorderPayload, StateMeta } from "../types";
 
 export function getLeftItems(
   filter: string,
@@ -21,18 +21,18 @@ export function getStateMeta(signal?: AbortSignal): Promise<StateMeta> {
   return apiGet("/state/meta", {}, signal);
 }
 
-export function selectItem(id: number): Promise<ActionQueueAck> {
+export function selectItem(id: number): Promise<ActionAckResponse> {
   return apiPost("/actions/select", { id });
 }
 
-export function deselectItem(id: number): Promise<ActionQueueAck> {
+export function deselectItem(id: number): Promise<ActionAckResponse> {
   return apiPost("/actions/deselect", { id });
 }
 
-export function addItem(id: number): Promise<ActionQueueAck> {
+export function addItem(id: number): Promise<ActionAckResponse> {
   return apiPost("/actions/add", { id });
 }
 
-export function reorderItem(payload: ReorderPayload): Promise<ActionQueueAck> {
+export function reorderItem(payload: ReorderPayload): Promise<ActionAckResponse> {
   return apiPost("/actions/reorder", payload);
 }

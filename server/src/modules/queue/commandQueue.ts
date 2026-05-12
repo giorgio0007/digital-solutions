@@ -2,6 +2,7 @@ import {
   addCustomItem,
   bumpStateVersion,
   deselectItem,
+  getState,
   reorderItem,
   selectItem,
 } from "../selection/state";
@@ -100,6 +101,14 @@ export function getQueueStats(): QueueStats {
   return {
     pendingAdd: addQueue.size,
     pendingMutation: mutationQueue.size,
+  };
+}
+
+export function getServerSnapshot(): QueueStats & { stateVersion: number } {
+  const queue = getQueueStats();
+  return {
+    ...queue,
+    stateVersion: getState().stateVersion,
   };
 }
 

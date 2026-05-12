@@ -17,6 +17,9 @@ export interface ActionQueueAck {
   key: string;
 }
 
+/** Action POST body: enqueue metadata + snapshot of queued/committed versioning */
+export type ActionAckResponse = ActionQueueAck & StateMeta;
+
 export interface ReorderPayload {
   itemId: number;
   targetId: number;

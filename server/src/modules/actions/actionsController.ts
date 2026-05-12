@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { enqueue } from "../queue/commandQueue";
+import { enqueue, getServerSnapshot } from "../queue/commandQueue";
 import type { Command } from "../../shared/types";
 
 function toId(value: unknown): number | null {
@@ -16,7 +16,8 @@ export function postSelect(req: Request, res: Response): void {
     return;
   }
   const command: Command = { type: "SELECT_ITEM", payload: { id } };
-  res.json(enqueue(command));
+  const ack = enqueue(command);
+  res.json({ ...ack, ...getServerSnapshot() });
 }
 
 export function postDeselect(req: Request, res: Response): void {
@@ -26,7 +27,8 @@ export function postDeselect(req: Request, res: Response): void {
     return;
   }
   const command: Command = { type: "DESELECT_ITEM", payload: { id } };
-  res.json(enqueue(command));
+  const ack = enqueue(command);
+  res.json({ ...ack, ...getServerSnapshot() });
 }
 
 export function postAdd(req: Request, res: Response): void {
@@ -36,7 +38,8 @@ export function postAdd(req: Request, res: Response): void {
     return;
   }
   const command: Command = { type: "ADD_CUSTOM_ITEM", payload: { id } };
-  res.json(enqueue(command));
+  const ack = enqueue(command);
+  res.json({ ...ack, ...getServerSnapshot() });
 }
 
 export function postReorder(req: Request, res: Response): void {
@@ -57,5 +60,6 @@ export function postReorder(req: Request, res: Response): void {
     type: "REORDER_ITEM",
     payload: { itemId, targetId, position },
   };
-  res.json(enqueue(command));
+  const ack = enqueue(command);
+  res.json({ ...ack, ...getServerSnapshot() });
 }
