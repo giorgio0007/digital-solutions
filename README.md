@@ -1,155 +1,86 @@
-# Virtual Range Selector (Fullstack)
+# Два списка на «виртуальном миллионе» ID
 
-Two-panel fullstack app with shared in-memory state:
-- left panel: available IDs
-- right panel: selected IDs
+Небольшое fullstack-приложение без базы данных: состояние живёт в памяти процесса Node до перезапуска сервера. Слева — все ID из диапазона **1…1 000 000**, которые ещё не выбраны, плюс свои добавленные вручную. Справа — выбранные, с возможностью **перетаскивать только вверх/вниз** и сохранением порядка на сервере.
 
-Tech stack:
-- Backend: Node.js + Express + TypeScript
-- Frontend: React + Vite + TypeScript
-- Data: process memory only (no DB)
+Стек: **Express + TypeScript** (backend), **React + Vite + TypeScript** (frontend).
 
-## Run
+## Запуск
 
 ```bash
-# backend
+# терминал 1 — API
 cd server
 npm install
 npm run dev
 
-# frontend (new terminal)
+# терминал 2 — интерфейс
 cd client
 npm install
 npm run dev
 ```
 
-Frontend expects backend at `http://localhost:3001/api`.
-You can override with `VITE_API_BASE`.
+По умолчанию фронт ходит на `http://localhost:3001/api`. Можно задать другой префикс через переменную окружения **`VITE_API_BASE`**.
 
-## Architecture
+## Идея данных (без миллиона записей в RAM)
 
-### Backend
+Миллион ID **не хранится** массивом и не перебирается целиком при каждом запросе. Базовый диапазон считается «есть сам по себе». В памяти только то, что реально отличается от «все выбрано/ничего не выбрано»:
 
-Structure:
+- порядок и состав выбранных;
+- множество выбранных для быстрой проверки;
+- свои ID и их порядок среди кастомных.
+
+Сервер отдаёт **порциями по 20** с **курсором** (без offset-пагинации по индексу миллиона).
+
+## Очередь команд и батчинг
+
+Все изменения (`выбрать`, `убрать`, `переставить`, `добавить свой ID`) сначала попадают в **очередь** с дедупликацией по ключу вида «тип + данные».
+
+- мутации (всё, кроме чистого add) применяются к состоянию **примерно раз в секунду**;
+- добавления кастомных ID — **примерно раз в 10 секунд**.
+
+Ответ на `POST /api/actions/*` сразу возвращает актуальный **снимок счётчиков очереди** и ту же версию состояния, что и `/api/state/meta`, чтобы не дергать мета-роут постоянным опросом.
+
+На клиенте после действия списки дополнительно **мягко синхронизируются** с задержкой, близкой к этим интервалам, чтобы не моргать «старыми» данными до flush.
+
+## API (кратко)
+
+**Чтение**
+
+- `GET /api/items/left?filter=&cursor=&limit=20`
+- `GET /api/items/right?filter=&cursor=&limit=20`
+- `GET /api/state/meta`
+
+**Запись**
+
+- `POST /api/actions/select` — тело `{ "id": 123 }`
+- `POST /api/actions/deselect`
+- `POST /api/actions/add` — свой ID (не обязан быть ≤ 1 000 000, если так задали)
+- `POST /api/actions/reorder` — `{ itemId, targetId, position: "before" | "after" }`
+
+Переупорядочивание **операционное**: целый массив порядка на сервер не отправляется.
+
+## Интерфейс
+
+- Слева и справа — **бесконечная прокрутка**, фильтрация по подстроке в номере ID, виртуализация через **react-virtuoso**.
+- Поиск **не сохраняется** между обновлениями страницы; выбор и порядок **сохраняются**, пока жив серверный процесс.
+- Перетаскивание в правой колонке сделано **без `@dnd-kit`**: свой обработчик **Pointer Events** + «призрак» в `position: fixed`, чтобы не ломать виртуальный список и не терять строку у верхнего края. Движение только по вертикали; у списка фиксированная высота строки, совпадающая с `fixedItemHeight` у Virtuoso.
+
+## Ограничения (честно)
+
+- После перезапуска сервера всё обнуляется.
+- Оптимистичные правки и кратковременные рассинхроны возможны на границах flush; при сомнении помогает подождать секунду или прокрутить список — затем прилетит ответ сервера.
+- Очень длинный список выбранных на практике упирается в разумный объём DOM/памяти браузера; для демо задумывались «человеческие» объёмы выбранного.
+
+## Структура backend
 
 ```text
 server/src/
-  modules/
-    actions/
-    items/
-    queue/
-    selection/
-  shared/
   app.ts
+  modules/
+    actions/     # POST-обработчики
+    items/       # курсорная выдача left/right
+    queue/       # очередь и flush
+    selection/   # состояние в памяти
+  shared/        # типы и константы
 ```
 
-Core state (`modules/selection/state.ts`):
-- `selectedOrder: number[]` - global selected order source of truth
-- `selectedSet: Set<number>` - O(1) selection membership checks
-- `customItems: Set<number>` - manually added IDs
-- `customOrder: number[]` - stable traversal for custom items
-- `stateVersion: number` - incremented on applied flush with changes
-
-Virtual base range:
-- IDs `1..1_000_000` are implicit and not materialized in memory
-- only selected/custom deltas are stored
-
-### Lazy filtering and pagination
-
-Endpoints:
-- `GET /api/items/left?filter=&cursor=&limit=20`
-- `GET /api/items/right?filter=&cursor=&limit=20`
-
-Cursor-based pagination is used (`nextCursor`).
-
-Left list is evaluated lazily:
-- iterate IDs
-- skip selected
-- apply filter
-- collect only requested chunk (20 by default)
-- stop early as soon as chunk is ready
-
-To avoid event-loop blocking on worst-case filters:
-- implementation yields to event loop with `setImmediate`
-- each sync slice is capped (~10ms)
-
-### Command queue, dedup, batching
-
-Commands:
-- `SELECT_ITEM`
-- `DESELECT_ITEM`
-- `REORDER_ITEM`
-- `ADD_CUSTOM_ITEM`
-
-Two queues:
-- mutation queue flush every 1s
-- add queue flush every 10s
-
-Deduplication:
-- command key is `${type}:${JSON.stringify(payload)}`
-- duplicate keys are ignored until flush
-
-Flush behavior:
-- apply commands to in-memory state
-- clear queue
-- increment `stateVersion` if state changed
-
-### API
-
-Reads:
-- `GET /api/items/left`
-- `GET /api/items/right`
-- `GET /api/state/meta` -> `{ stateVersion, pendingAdd, pendingMutation }` (manual refresh / post-mutation sync; client does **not** poll this every second)
-
-Writes:
-- `POST /api/actions/select` `{ id }`
-- `POST /api/actions/deselect` `{ id }`
-- `POST /api/actions/add` `{ id }`
-- `POST /api/actions/reorder` `{ itemId, targetId, position }`
-
-Each write responds with enqueue metadata **plus** the same `{ stateVersion, pendingAdd, pendingMutation }` snapshot so the UI can update indicators without hammering `/state/meta`.
-
-Reorder is operation-based (no full array payload).
-
-### Frontend
-
-Uses:
-- TanStack Query (`useInfiniteQuery`, mutations, invalidation)
-- react-virtuoso (virtualized rendering for both panels)
-- dnd-kit (drag/drop reorder on right panel)
-
-UX behavior:
-- debounced search in both panels
-- stale requests canceled through query `AbortSignal`
-- optimistic list updates for select/deselect/add so the UI does not flicker before the 1s / 10s server flush
-- periodic resync roughly aligned with flush windows (invalidate lists + meta shortly after enqueue)
-- queue indicators fed from mutation responses (no unconditional 1 Hz polling)
-- drag/drop is vertical-only (`restrictToVerticalAxis`); horizontal dragging is suppressed
-- drag/drop reorder works while filtered because backend reorders against global `selectedOrder` by `targetId` lookup
-
-## Tradeoffs
-
-- No DB means fast local operations but volatile state (reset on server restart).
-- Dedup is per queue-window (until next flush), not historical forever.
-- Right-list optimistic reorder currently updates loaded pages; offscreen pages are eventually consistent after refetch.
-- `selectedOrder.indexOf(...)` is O(n). This keeps code simple and is acceptable for typical interactive selected-set sizes.
-
-## Performance decisions
-
-- Never allocate base range array (`1..1_000_000` stays virtual).
-- No full-range `.filter()` calls.
-- Pagination is cursor-based and chunked.
-- Lazy iteration with early stop minimizes scanned IDs.
-- Event-loop yielding avoids long blocking scans.
-- Virtualized UI keeps DOM size bounded.
-- Set-based membership avoids repeated linear lookups for selected checks.
-
-## Edge cases handled
-
-- duplicate custom IDs (rejected in state layer)
-- selecting already selected item (ignored)
-- deselecting non-selected item (ignored)
-- custom IDs over `1_000_000` supported
-- reorder with identical source/target ignored
-- queue dedup for rapid repeated same operations
-
+Если нужно что-то упростить ещё сильнее (например, убрать оптимистичные обновления и жить только на refetch после flush) — это можно сделать отдельным шагом: меньше кода, но заметнее задержка в UI.

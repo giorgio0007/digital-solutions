@@ -39,7 +39,7 @@ export function VirtualList({
       components={{
         Footer: () =>
           loading ? (
-            <div className="list-footer">Loading...</div>
+            <div className="list-footer">Загрузка...</div>
           ) : (
             <div className="list-footer"> </div>
           ),

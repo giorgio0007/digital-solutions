@@ -6,7 +6,7 @@ import type { ActionAckResponse, CursorPage, StateMeta } from "../types";
 import {
   optimisticAppendToRight,
   optimisticInsertIntoLeft,
-  PAGE_LIMIT,
+  reorderLoadedRight,
   removeIdFromInfinite,
   RESYNC_AFTER_ADD_MS,
   RESYNC_AFTER_MUTATION_MS,
@@ -54,7 +54,6 @@ export function useActions() {
     addResyncTimer.current = setTimeout(() => {
       addResyncTimer.current = undefined;
       queryClient.invalidateQueries({ queryKey: ["left"] });
-      queryClient.invalidateQueries({ queryKey: ["right"] });
       queryClient.invalidateQueries({ queryKey: ["state-meta"] });
     }, RESYNC_AFTER_ADD_MS);
   };
@@ -161,36 +160,9 @@ export function useActions() {
     onMutate: async ({ itemId, targetId, position }) => {
       await queryClient.cancelQueries({ queryKey: ["right"] });
       const snapshots = queryClient.getQueriesData({ queryKey: ["right"] });
-      queryClient.setQueriesData({ queryKey: ["right"] }, (oldData) => {
-        const data = oldData as InfiniteData<CursorPage, number | null> | undefined;
-        if (!data?.pages?.length) return data;
-        const merged = data.pages.flatMap((page: CursorPage) => page.items);
-        const sourceIndex = merged.indexOf(itemId);
-        const targetIndex = merged.indexOf(targetId);
-        if (sourceIndex < 0 || targetIndex < 0) return data;
-        const moved = [...merged];
-        const [value] = moved.splice(sourceIndex, 1);
-        let insertionIndex = targetIndex;
-        if (sourceIndex < targetIndex) insertionIndex -= 1;
-        if (position === "after") insertionIndex += 1;
-        moved.splice(insertionIndex, 0, value);
-
-        const rebuiltPages: CursorPage[] = [];
-        for (let i = 0; i < moved.length; i += PAGE_LIMIT) {
-          const slice = moved.slice(i, i + PAGE_LIMIT);
-          rebuiltPages.push({
-            items: slice,
-            nextCursor: slice.at(-1)!,
-            stateVersion: data.pages[0]?.stateVersion ?? 1,
-          });
-        }
-
-        const pageParams: (number | null)[] = rebuiltPages.map((_page, idx) =>
-          idx === 0 ? null : rebuiltPages[idx - 1]!.items.at(-1)!,
-        );
-
-        return { ...data, pages: rebuiltPages, pageParams };
-      });
+      queryClient.setQueriesData({ queryKey: ["right"] }, (oldData) =>
+        reorderLoadedRight(oldData as InfiniteData<CursorPage, number | null>, itemId, targetId, position),
+      );
       return { snapshots };
     },
     onError: (_error, _payload, context) => rollbackPanels(queryClient, context?.snapshots),

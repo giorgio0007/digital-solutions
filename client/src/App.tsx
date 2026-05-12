@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { VirtualList } from "./components/VirtualList";
-import { SortableRightList } from "./components/SortableRightList";
+import { SelectedVirtualList } from "./components/SelectedVirtualList";
 import { useDebouncedValue } from "./hooks/useDebouncedValue";
 import { useActions } from "./hooks/useActions";
 import { useLeftItemsQuery, useRightItemsQuery, useStateMetaQuery } from "./hooks/useItemsQueries";
@@ -40,30 +40,30 @@ function App() {
   return (
     <main className="layout">
       <header className="topbar">
-        <h1>Virtual Range Selector</h1>
+        <h1>Выбор из виртуального миллиона ID</h1>
         <div className="queue-indicator">
-          <span>Version: {metaQuery.data?.stateVersion ?? "-"}</span>
-          <span>Mutation queue: {metaQuery.data?.pendingMutation ?? 0}</span>
-          <span>Add queue: {metaQuery.data?.pendingAdd ?? 0}</span>
+          <span>Версия: {metaQuery.data?.stateVersion ?? "-"}</span>
+          <span>Очередь изменений: {metaQuery.data?.pendingMutation ?? 0}</span>
+          <span>Очередь добавлений: {metaQuery.data?.pendingAdd ?? 0}</span>
         </div>
       </header>
       <section className="columns">
         <div className="panel">
-          <h2>Available IDs</h2>
+          <h2>Все ID (кроме выбранных)</h2>
           <div className="panel-controls">
             <input
               value={leftFilterInput}
               onChange={(event) => setLeftFilterInput(event.target.value)}
-              placeholder="Filter by substring"
+              placeholder="Поиск по подстроке в номере"
             />
             <div className="add-row">
               <input
                 value={customIdInput}
                 onChange={(event) => setCustomIdInput(event.target.value)}
-                placeholder="Add custom ID"
+                placeholder="Свой ID (любой положительный)"
               />
               <button type="button" onClick={onAdd}>
-                Add
+                Добавить
               </button>
             </div>
           </div>
@@ -76,12 +76,12 @@ function App() {
                 leftQuery.fetchNextPage();
               }
             }}
-            emptyText="No items in left panel"
+            emptyText="Здесь пока пусто"
             renderRow={(itemId) => (
               <div className="item-row">
                 <span className="id-tag">#{itemId}</span>
                 <button type="button" onClick={() => selectMutation.mutate(itemId)}>
-                  Select
+                  Выбрать
                 </button>
               </div>
             )}
@@ -89,15 +89,15 @@ function App() {
         </div>
 
         <div className="panel">
-          <h2>Selected IDs</h2>
+          <h2>Выбранные ID</h2>
           <div className="panel-controls">
             <input
               value={rightFilterInput}
               onChange={(event) => setRightFilterInput(event.target.value)}
-              placeholder="Filter by substring"
+              placeholder="Поиск по подстроке в номере"
             />
           </div>
-          <SortableRightList
+          <SelectedVirtualList
             items={rightItems}
             loading={rightQuery.isFetching}
             hasMore={Boolean(rightQuery.hasNextPage)}

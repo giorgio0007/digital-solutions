@@ -3,6 +3,18 @@ import type { CursorPage } from "../types";
 
 export const PAGE_LIMIT = 20;
 
+/** Убираем повторы id без изменения порядка первого вхождения — защита от «мерцающих» дублей после оптимистичных патчей */
+export function uniqOrdered(ids: number[]): number[] {
+  const seen = new Set<number>();
+  const out: number[] = [];
+  for (const id of ids) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
 /** ~1s server mutation flush + small buffer so refetch sees applied state */
 export const RESYNC_AFTER_MUTATION_MS = 1150;
 /** ~10s add flush + buffer */
@@ -21,9 +33,10 @@ export function rebuildFromFlat(
   old: InfiniteData<CursorPage, number | null>,
   flat: number[],
 ): InfiniteData<CursorPage, number | null> {
+  const normalized = uniqOrdered(flat);
   const version = old.pages[0]?.stateVersion ?? 1;
 
-  if (flat.length === 0) {
+  if (normalized.length === 0) {
     return {
       pages: [{ items: [], nextCursor: null, stateVersion: version }],
       pageParams: [null],
@@ -31,8 +44,8 @@ export function rebuildFromFlat(
   }
 
   const chunks: number[][] = [];
-  for (let i = 0; i < flat.length; i += PAGE_LIMIT) {
-    chunks.push(flat.slice(i, i + PAGE_LIMIT));
+  for (let i = 0; i < normalized.length; i += PAGE_LIMIT) {
+    chunks.push(normalized.slice(i, i + PAGE_LIMIT));
   }
 
   const pages: CursorPage[] = chunks.map((chunk) => ({
@@ -83,4 +96,27 @@ export function optimisticInsertIntoLeft(
   const flat = flatten(old).filter((item) => item !== id);
   const sorted = [...flat, id].sort((a, b) => a - b);
   return rebuildFromFlat(old, sorted);
+}
+
+export function reorderLoadedRight(
+  old: InfiniteData<CursorPage, number | null> | undefined,
+  itemId: number,
+  targetId: number,
+  position: "before" | "after",
+): InfiniteData<CursorPage, number | null> | undefined {
+  if (!old?.pages?.length || itemId === targetId) return old;
+
+  const merged = uniqOrdered(old.pages.flatMap((page) => page.items));
+  const sourceIndex = merged.indexOf(itemId);
+  const targetIndex = merged.indexOf(targetId);
+  if (sourceIndex < 0 || targetIndex < 0) return old;
+
+  const moved = [...merged];
+  const [value] = moved.splice(sourceIndex, 1);
+  let insertionIndex = targetIndex;
+  if (sourceIndex < targetIndex) insertionIndex -= 1;
+  if (position === "after") insertionIndex += 1;
+  moved.splice(insertionIndex, 0, value);
+
+  return rebuildFromFlat(old, moved);
 }

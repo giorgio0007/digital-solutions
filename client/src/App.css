@@ -77,6 +77,8 @@ button {
 
 .drag-handle {
   cursor: grab;
+  user-select: none;
+  touch-action: none;
 }
 
 .empty {
@@ -86,6 +88,31 @@ button {
 
 .row-shell {
   padding-bottom: 8px;
+}
+
+.right-row-shell {
+  box-sizing: border-box;
+  height: 52px;
+  padding: 0 0 8px 0;
+}
+
+.right-row-shell.is-drag-source {
+  opacity: 0.35;
+}
+
+.right-row-shell.is-drop-target {
+  outline: 2px dashed #2563eb;
+  outline-offset: -2px;
+  border-radius: 10px;
+}
+
+.item-row.item-row-right {
+  height: 44px;
+  box-sizing: border-box;
+}
+
+.drag-ghost {
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
 }
 
 .list-footer {
