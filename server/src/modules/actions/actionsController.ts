@@ -1,9 +1,9 @@
-import type { Request, Response } from "express";
-import { enqueue, getServerSnapshot } from "../queue/commandQueue";
-import type { Command } from "../../shared/types";
+import type { Request, Response } from 'express';
+import { enqueue, getServerSnapshot } from '../queue/commandQueue';
+import type { Command } from '../../shared/types';
 
 function toId(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
     return null;
   }
   return value;
@@ -12,10 +12,10 @@ function toId(value: unknown): number | null {
 export function postSelect(req: Request, res: Response): void {
   const id = toId(req.body?.id);
   if (id === null) {
-    res.status(400).json({ error: "Invalid id" });
+    res.status(400).json({ error: 'Invalid id' });
     return;
   }
-  const command: Command = { type: "SELECT_ITEM", payload: { id } };
+  const command: Command = { type: 'SELECT_ITEM', payload: { id } };
   const ack = enqueue(command);
   res.json({ ...ack, ...getServerSnapshot() });
 }
@@ -23,10 +23,10 @@ export function postSelect(req: Request, res: Response): void {
 export function postDeselect(req: Request, res: Response): void {
   const id = toId(req.body?.id);
   if (id === null) {
-    res.status(400).json({ error: "Invalid id" });
+    res.status(400).json({ error: 'Invalid id' });
     return;
   }
-  const command: Command = { type: "DESELECT_ITEM", payload: { id } };
+  const command: Command = { type: 'DESELECT_ITEM', payload: { id } };
   const ack = enqueue(command);
   res.json({ ...ack, ...getServerSnapshot() });
 }
@@ -34,10 +34,11 @@ export function postDeselect(req: Request, res: Response): void {
 export function postAdd(req: Request, res: Response): void {
   const id = toId(req.body?.id);
   if (id === null) {
-    res.status(400).json({ error: "Invalid id" });
+    res.status(400).json({ error: 'Invalid id' });
     return;
   }
-  const command: Command = { type: "ADD_CUSTOM_ITEM", payload: { id } };
+
+  const command: Command = { type: 'ADD_CUSTOM_ITEM', payload: { id } };
   const ack = enqueue(command);
   res.json({ ...ack, ...getServerSnapshot() });
 }
@@ -50,14 +51,14 @@ export function postReorder(req: Request, res: Response): void {
   if (
     itemId === null ||
     targetId === null ||
-    (position !== "before" && position !== "after")
+    (position !== 'before' && position !== 'after')
   ) {
-    res.status(400).json({ error: "Invalid reorder payload" });
+    res.status(400).json({ error: 'Invalid reorder payload' });
     return;
   }
 
   const command: Command = {
-    type: "REORDER_ITEM",
+    type: 'REORDER_ITEM',
     payload: { itemId, targetId, position },
   };
   const ack = enqueue(command);

@@ -1,9 +1,9 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { getLeftItems, getRightItems, getStateMeta } from "../api/itemsApi";
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { getLeftItems, getRightItems } from '../api/itemsApi';
 
 export function useLeftItemsQuery(filter: string) {
   return useInfiniteQuery({
-    queryKey: ["left", filter],
+    queryKey: ['left', filter],
     queryFn: ({ pageParam, signal }) => getLeftItems(filter, pageParam, signal),
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -12,19 +12,10 @@ export function useLeftItemsQuery(filter: string) {
 
 export function useRightItemsQuery(filter: string) {
   return useInfiniteQuery({
-    queryKey: ["right", filter],
-    queryFn: ({ pageParam, signal }) => getRightItems(filter, pageParam, signal),
+    queryKey: ['right', filter],
+    queryFn: ({ pageParam, signal }) =>
+      getRightItems(filter, pageParam, signal),
     initialPageParam: null as number | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
-  });
-}
-
-export function useStateMetaQuery() {
-  return useQuery({
-    queryKey: ["state-meta"],
-    queryFn: ({ signal }) => getStateMeta(signal),
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
   });
 }

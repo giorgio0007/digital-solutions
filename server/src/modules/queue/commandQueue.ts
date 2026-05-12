@@ -5,10 +5,10 @@ import {
   getState,
   reorderItem,
   selectItem,
-} from "../selection/state";
-import type { AddCustomItemCommand, Command, CommandType } from "../../shared/types";
+} from '../selection/state';
+import type { AddCustomItemCommand, Command, CommandType } from '../../shared/types';
 
-type QueueType = "add" | "mutation";
+type QueueType = 'add' | 'mutation';
 
 interface QueueStats {
   pendingAdd: number;
@@ -39,18 +39,18 @@ function keyForCommand(command: Command): string {
 }
 
 function resolveQueue(commandType: CommandType): QueueType {
-  return commandType === "ADD_CUSTOM_ITEM" ? "add" : "mutation";
+  return commandType === 'ADD_CUSTOM_ITEM' ? 'add' : 'mutation';
 }
 
 function applyCommand(command: Command): boolean {
   switch (command.type) {
-    case "ADD_CUSTOM_ITEM":
+    case 'ADD_CUSTOM_ITEM':
       return addCustomItem(command.payload.id).changed;
-    case "SELECT_ITEM":
+    case 'SELECT_ITEM':
       return selectItem(command.payload.id).changed;
-    case "DESELECT_ITEM":
+    case 'DESELECT_ITEM':
       return deselectItem(command.payload.id).changed;
-    case "REORDER_ITEM":
+    case 'REORDER_ITEM':
       return reorderItem(
         command.payload.itemId,
         command.payload.targetId,
@@ -84,7 +84,7 @@ function flushQueue(queue: Map<string, Command>, type: QueueType): FlushResult {
 export function enqueue(command: Command): EnqueueResult {
   const key = keyForCommand(command);
   const queueType = resolveQueue(command.type);
-  const queue = queueType === "add" ? addQueue : mutationQueue;
+  const queue = queueType === 'add' ? addQueue : mutationQueue;
   const existed = queue.has(key);
   if (!existed) {
     queue.set(key, command as never);
@@ -114,10 +114,16 @@ export function getServerSnapshot(): QueueStats & { stateVersion: number } {
 
 export function startQueueScheduler(): void {
   setInterval(() => {
-    flushQueue(mutationQueue, "mutation");
+    flushQueue(mutationQueue, 'mutation');
   }, MUTATION_FLUSH_MS);
 
   setInterval(() => {
-    flushQueue(addQueue, "add");
+    flushQueue(addQueue, 'add');
   }, ADD_FLUSH_MS);
+}
+export function getPendingCommands() {
+  return {
+    addCommands: Array.from(addQueue.values()),
+    mutationCommands: Array.from(mutationQueue.values()),
+  };
 }

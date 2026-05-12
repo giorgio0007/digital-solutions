@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
-import { VirtualList } from "./components/VirtualList";
-import { SelectedVirtualList } from "./components/SelectedVirtualList";
-import { useDebouncedValue } from "./hooks/useDebouncedValue";
-import { useActions } from "./hooks/useActions";
-import { useLeftItemsQuery, useRightItemsQuery, useStateMetaQuery } from "./hooks/useItemsQueries";
-import "./App.css";
+import { useMemo, useState } from 'react';
+import { VirtualList } from './components/VirtualList';
+import { SelectedVirtualList } from './components/SelectedVirtualList';
+import { useDebouncedValue } from './hooks/useDebouncedValue';
+import { useActions } from './hooks/useActions';
+import { useLeftItemsQuery, useRightItemsQuery } from './hooks/useItemsQueries';
+import './App.css';
 
 function flattenPages(data?: { pages: Array<{ items: number[] }> }): number[] {
   if (!data) return [];
@@ -12,49 +12,50 @@ function flattenPages(data?: { pages: Array<{ items: number[] }> }): number[] {
 }
 
 function App() {
-  const [leftFilterInput, setLeftFilterInput] = useState("");
-  const [rightFilterInput, setRightFilterInput] = useState("");
-  const [customIdInput, setCustomIdInput] = useState("");
+  const [leftFilterInput, setLeftFilterInput] = useState('');
+  const [rightFilterInput, setRightFilterInput] = useState('');
+  const [customIdInput, setCustomIdInput] = useState('');
 
   const leftFilter = useDebouncedValue(leftFilterInput, 250);
   const rightFilter = useDebouncedValue(rightFilterInput, 250);
 
   const leftQuery = useLeftItemsQuery(leftFilter);
   const rightQuery = useRightItemsQuery(rightFilter);
-  const metaQuery = useStateMetaQuery();
 
-  const leftItems = useMemo(() => flattenPages(leftQuery.data), [leftQuery.data]);
-  const rightItems = useMemo(() => flattenPages(rightQuery.data), [rightQuery.data]);
+  const leftItems = useMemo(
+    () => flattenPages(leftQuery.data),
+    [leftQuery.data]
+  );
+  const rightItems = useMemo(
+    () => flattenPages(rightQuery.data),
+    [rightQuery.data]
+  );
 
-  const { addMutation, deselectMutation, reorderMutation, selectMutation } = useActions();
+  const { addMutation, deselectMutation, reorderMutation, selectMutation } =
+    useActions();
 
   const onAdd = () => {
     const parsed = Number(customIdInput);
     if (!Number.isInteger(parsed) || parsed < 1) {
-      return;
+      return alert('ID должен быть числом, еще и целым еще и положительным:)');
     }
     addMutation.mutate(parsed);
-    setCustomIdInput("");
+    setCustomIdInput('');
   };
 
   return (
     <main className="layout">
       <header className="topbar">
         <h1>Выбор из виртуального миллиона ID</h1>
-        <div className="queue-indicator">
-          <span>Версия: {metaQuery.data?.stateVersion ?? "-"}</span>
-          <span>Очередь изменений: {metaQuery.data?.pendingMutation ?? 0}</span>
-          <span>Очередь добавлений: {metaQuery.data?.pendingAdd ?? 0}</span>
-        </div>
       </header>
       <section className="columns">
         <div className="panel">
-          <h2>Все ID (кроме выбранных)</h2>
+          <h2>Все ID</h2>
           <div className="panel-controls">
             <input
               value={leftFilterInput}
               onChange={(event) => setLeftFilterInput(event.target.value)}
-              placeholder="Поиск по подстроке в номере"
+              placeholder="Фильтровать по ID"
             />
             <div className="add-row">
               <input
@@ -80,7 +81,10 @@ function App() {
             renderRow={(itemId) => (
               <div className="item-row">
                 <span className="id-tag">#{itemId}</span>
-                <button type="button" onClick={() => selectMutation.mutate(itemId)}>
+                <button
+                  type="button"
+                  onClick={() => selectMutation.mutate(itemId)}
+                >
                   Выбрать
                 </button>
               </div>
@@ -94,7 +98,7 @@ function App() {
             <input
               value={rightFilterInput}
               onChange={(event) => setRightFilterInput(event.target.value)}
-              placeholder="Поиск по подстроке в номере"
+              placeholder="Фильтровать по ID"
             />
           </div>
           <SelectedVirtualList

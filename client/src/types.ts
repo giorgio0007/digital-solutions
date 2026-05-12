@@ -13,7 +13,7 @@ export interface StateMeta {
 export interface ActionQueueAck {
   accepted: boolean;
   deduplicated: boolean;
-  queueType: "add" | "mutation";
+  queueType: 'add' | 'mutation';
   key: string;
 }
 
@@ -23,5 +23,5 @@ export type ActionAckResponse = ActionQueueAck & StateMeta;
 export interface ReorderPayload {
   itemId: number;
   targetId: number;
-  position: "before" | "after";
+  position: 'before' | 'after';
 }
